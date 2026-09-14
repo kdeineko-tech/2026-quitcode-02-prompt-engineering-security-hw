@@ -25,12 +25,66 @@ export function estimateTotalCents(input: QuoteInput): number {
 }
 
 /**
- * Розбити суму на `parts` рівних платежів (у центах).
- * Повертає масив довжиною `parts`.
+ * Розподілити цілочисельний залишок `remainder` (у центах) по `parts`
+ * базовим платежам розміром `base`.
+ *
+ * Повертає новий масив довжиною `parts`, де перші `Math.abs(remainder)`
+ * елементів збільшені (або зменшені, якщо `remainder` від'ємний) на 1 —
+ * так само детерміновано у прибутковому, як і у від'ємному випадку.
+ * Чиста функція: не має побічних ефектів і не змінює вхідні дані.
+ */
+function distributeRemainderCents(
+  base: number,
+  parts: number,
+  remainder: number,
+): number[] {
+  const result = new Array(parts).fill(base);
+  const step = remainder > 0 ? 1 : -1;
+  for (let i = 0; i < Math.abs(remainder); i++) {
+    result[i] += step;
+  }
+  return result;
+}
+
+/**
+ * Верхня межа кількості платежів. Обрана значно нижче ліміту довжини
+ * масиву в рушії JS (2^32 - 1), щоб замінити непрозорий нативний
+ * RangeError / вичерпання пам'яті зрозумілою помилкою валідації.
+ * Знайдено рев'ю (`prompts/review-changes.md`) і закрито через
+ * `prompts/debug-quote.md`.
+ */
+const MAX_INSTALLMENT_PARTS = 100_000;
+
+/**
+ * Розбити суму на `parts` платежів (у центах).
+ * Повертає масив довжиною `parts`, сума елементів якого завжди
+ * точно дорівнює `totalCents` (залишок від цілочисельного ділення
+ * детерміновано розподіляється по одному центу, починаючи з перших
+ * платежів — так само у прибутковому, так і у від'ємному totalCents).
+ *
+ * `totalCents` має бути цілим числом (центи): для дробового значення
+ * залишок після `Math.trunc` теж стає дробовим, і сума платежів мовчки
+ * розходиться з `totalCents` — тому такий вхід відхиляється явною помилкою.
  */
 export function splitInstallments(totalCents: number, parts: number): number[] {
-  const each = Math.round(totalCents / parts);
-  return new Array(parts).fill(each);
+  if (!Number.isInteger(totalCents)) {
+    throw new Error(
+      `splitInstallments: "totalCents" must be an integer number of cents, отримано ${totalCents}`,
+    );
+  }
+  if (!Number.isInteger(parts) || parts <= 0) {
+    throw new Error(
+      `splitInstallments: "parts" must be a positive integer, отримано ${parts}`,
+    );
+  }
+  if (parts > MAX_INSTALLMENT_PARTS) {
+    throw new Error(
+      `splitInstallments: "parts" перевищує допустиму межу (${MAX_INSTALLMENT_PARTS}), отримано ${parts}`,
+    );
+  }
+  const base = Math.trunc(totalCents / parts);
+  const remainder = totalCents - base * parts;
+  return distributeRemainderCents(base, parts, remainder);
 }
 
 /** Форматування центів у рядок на кшталт "$1,234.50". */

@@ -71,11 +71,11 @@ Senior TypeScript-розробник, що покращує читабельні
 валідацією `parts`.
 
 **Рефакторинг:** винесено чисту функцію
-`distributeRemainder(base: number, remainder: number, parts: number): number[]`
+`distributeRemainderCents(base: number, parts: number, remainder: number): number[]`
 з JSDoc, що описує контракт («повертає масив довжиною `parts`, де перші
 `|remainder|` елементів відрізняються від `base` на ±1»).
 `splitInstallments` тепер: валідація `parts` → обчислення `base`/`remainder`
-→ `return distributeRemainder(base, remainder, parts)`.
+→ `return distributeRemainderCents(base, parts, remainder)`.
 
 **Перевірка, що це справді рефакторинг, а не прихований фікс:**
 `app/src/quote.test.ts` лишився без жодної зміни
